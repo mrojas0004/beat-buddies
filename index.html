@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Sprunky's</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,8 +60,9 @@ body[data-w="run"]{--w1:#FF5252;--w2:#FF8A3D;--w3:#FFD23F}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%}
+html{touch-action:pan-x pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{margin:0;background-color:var(--w1);background-image:linear-gradient(var(--tint),var(--tint)),linear-gradient(165deg,var(--w1) 0%,var(--w2) 55%,var(--w3) 100%);color:var(--ink);
-  font-family:var(--f-body);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  font-family:var(--f-body);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:pan-x pan-y;overscroll-behavior:none;-webkit-touch-callout:none}
 /* party sky: slow sunburst plus rising bubbles and music notes */
 #bgfx{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;opacity:var(--fx)}
 #bgfx .rays{position:absolute;left:50%;top:-30vmax;width:200vmax;height:200vmax;margin-left:-100vmax;margin-top:-70vmax;
@@ -721,10 +722,19 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const INK = '#2B2F5E';
 const ROUND_LEN = 8;
 
+/* ---------- no zooming: little hands pinch or double-tap by accident, and then the sides of the game are cut off ---------- */
+(() => {
+  const stop = e => { e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, stop, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+  document.addEventListener('dblclick', stop);
+})();
+
 /* ---------- saved progress (this device only) ---------- */
 const KEY = 'sprunkys.v1';
 const S = { stars: 0, age: 'little', music: true, voice: true, band: {}, best: {}, seen: { bop: true, lulu: true }, greeted: false, bandIntro: false,
-  song: 'pop', tempo: 'normal', voiceMix: true, voiceURI: '', jokes: false, runOn: true, runLevel: 0, countVoice: true, allBuddies: false, runHist: [], learned: {}, step: {}, recVoice: '', runBest: {}, runner: 'pip', starAlways: true };
+  song: 'pop', tempo: 'normal', voiceMix: true, voiceURI: '', jokes: false, runOn: true, runLevel: 0, countVoice: true, allBuddies: false, runHist: [], learned: {}, step: {}, recVoice: '', runBest: {}, runner: 'pip' };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
 /* Jump Jam: one play for every 3 stars (at most 3 saved up). A child who already has stars starts with one. */
 const RUN_NEED = 3, NUMW = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five'];
@@ -1420,6 +1430,13 @@ const AU = {
     [72, 76, 79, 84].forEach(n => this.tone({ type: 'square', f: mtof(n), t: t + 0.5, dur: 0.5, peak: 0.04, cut: 2200, r: 0.4, dest: this.sfx }));
     [84, 88, 91, 96].forEach((n, k) => this.bell(t + 0.55 + k * 0.12, n, this.sfx, 0.06));
   },
+  /* one firework: a soft crackle with a little bell on top, a different note each time */
+  firework(n = 0) {
+    if (!this.ctx) return; const t = this.now();
+    this.noise(t, this.sfx, 'bandpass', 800 + (n % 4) * 240, 0.8, 0.1, 0.26);
+    this.noise(t + 0.03, this.sfx, 'highpass', 5200, 0.6, 0.06, 0.45);
+    this.bell(t + 0.04, SCALE[(n * 3) % SCALE.length] + 12, this.sfx, 0.05);
+  },
   pluck(m) { if (!this.ctx) return; this.tone({ type: 'triangle', f: mtof(m), t: this.now(), peak: 0.14, decay: 0.35, dest: this.sfx }); }
 };
 
@@ -2002,7 +2019,7 @@ function makeRound(world) {
 }
 function startWorld(world, op) {
   AU.init();
-  R = { id: ++roundSeq, world, i: 0, stars: 0, firsts: 0, res: [], qs: [], tries: 0, busy: false, explore: false, svg: null, op: op || null, step: stepIx(world) };
+  R = { id: ++roundSeq, world, i: 0, stars: 0, res: [], qs: [], tries: 0, busy: false, explore: false, svg: null, op: op || null, step: stepIx(world) };
   $('#host').innerHTML = buddySVG(BY[WORLDS[world].host], 'dance');
   const modes = $('#modes'); modes.hidden = false;
   modes.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === 'quiz')));
@@ -2023,7 +2040,7 @@ function enterWorld(first) {
 function setStep(i) {
   const st = R && R.explore && stepsOf(R.world); if (!st || !st[i] || i === R.step) return;
   R.step = i; S.step = { ...(S.step || {}), [R.world]: i }; S.learned = { ...(S.learned || {}), [learnKey()]: true }; save();
-  Object.assign(R, { qs: [], i: 0, res: [], stars: 0, firsts: 0, tries: 0, streak: 0, explore: false });
+  Object.assign(R, { qs: [], i: 0, res: [], stars: 0, tries: 0, streak: 0, explore: false });
   $('#topTitle').textContent = playTitle();
   setExplore(true);
 }
@@ -2138,11 +2155,8 @@ function onMapHit(h) {
 }
 function correct(q) {
   R.busy = true;
-  /* a star for every finished question while "star for every question" is on (the default for a young learner);
-     R.firsts still counts the answers that were right on the first try, and that is what moves him to the next step */
-  const first = R.tries === 0, star = first || S.starAlways !== false; R.res[R.i] = star ? 'star' : 'ok';
-  if (first) { R.firsts = (R.firsts || 0) + 1; R.streak = (R.streak || 0) + 1; } else R.streak = 0;
-  if (star) { R.stars++; S.stars++; gainRunStar(); save(); flyStar(); }
+  const first = R.tries === 0; R.res[R.i] = first ? 'star' : 'ok';
+  if (first) { R.stars++; S.stars++; gainRunStar(); save(); flyStar(); R.streak = (R.streak || 0) + 1; } else R.streak = 0;
   AU.correct(R.i); renderStaff();
   bounceHost('cheer', 800);
   if (R.svg && q.reveal) q.reveal(R.svg);
@@ -2440,19 +2454,19 @@ function exploreHit(h) {
 
 /* results */
 function finishRound() {
-  const w = R.world, got = R.stars, total = R.qs.length, knew = R.firsts || 0;
+  const w = R.world, got = R.stars, total = R.qs.length;
   S.best[w] = Math.max(S.best[w] || 0, got);
   const fresh = BUDDIES.filter(b => unlocked(b) && !S.seen[b.id]);
   fresh.forEach(b => { S.seen[b.id] = true; S.band[b.id] = true; });
   save(); AU.fanfare(); AU.apply();
-  const title = knew === total ? 'Perfect! Superstar!' : knew >= 6 ? 'Amazing!' : knew >= 3 ? 'Great job!' : 'Good practice!';
+  const title = got === total ? 'Perfect! Superstar!' : got >= 6 ? 'Amazing!' : got >= 3 ? 'Great job!' : 'Good practice!';
   const steps = stepsOf(w); let stepCard = '', stepSay = '';
   if (steps && steps[R.step]) {
-    if (knew >= 5 && R.step < steps.length - 1 && stepIx(w) === R.step) {
+    if (got >= 5 && R.step < steps.length - 1 && stepIx(w) === R.step) {
       const nx = steps[R.step + 1]; S.step = { ...(S.step || {}), [w]: R.step + 1 }; save();
       stepCard = `<div class="unlock"><span class="un-em" aria-hidden="true">🎓</span><div><b>Step ${R.step + 1} done: ${esc(steps[R.step].name)}!</b><span>Next up: ${esc(nx.name)}. A new lesson comes first.</span></div></div>`;
       stepSay = `You finished this step! Next up: ${nx.name}!`;
-    } else if (knew < 4) {
+    } else if (got < 4) {
       const lk = learnKey(); if (S.learned && S.learned[lk]) { delete S.learned[lk]; save(); }
       stepCard = `<div class="unlock"><span class="un-em" aria-hidden="true">📖</span><div><b>Let's practice ${esc(steps[R.step].name)} some more.</b><span>The lesson comes first next time.</span></div></div>`;
     }
@@ -2554,7 +2568,6 @@ function renderParSet() {
 <div class="par-sec"><h3>Games and jokes</h3>
 <label class="tgl"><input type="checkbox" id="setRun"${S.runOn !== false ? ' checked' : ''}> Jump Jam map: a new level opens for every ${RUN_NEED} stars (open levels can be played again any time)</label>
 <div class="par-btns"><button class="chip" type="button" id="giveRun">Open 1 more level</button><span class="par-mini" id="runCount">Levels open: ${S.runOpen || 0} of ${FORMATS.length}</span></div>
-<label class="tgl"><input type="checkbox" id="setStarAll"${S.starAlways !== false ? ' checked' : ''}> A star for every question, even after a wrong try (turn off when he is older)</label>
 <label class="tgl"><input type="checkbox" id="setJokes"${S.jokes ? ' checked' : ''}> Joke picker at the end of a round</label>
 <label class="tgl"><input type="checkbox" id="setAll"${S.allBuddies ? ' checked' : ''}> All 20 buddies are in the band now (no waiting for stars)</label></div>`;
 }
@@ -2691,7 +2704,7 @@ function loadPic(file, id, quiet) {
    Run with the orange or the red buddy, collect music notes (each one plays the next note of a scale),
    bounce on drums, hop on grumpy rain clouds to turn them into rainbows, and reach the big stage.
    Nobody gets hurt and there is no game over: a fall just floats you back to the last safe spot. */
-const LH = 540, GY = 440, STEP = 1 / 60;
+const LH = 540, GY = 440, STEP = 1 / 60, PARTY_NOTES = 5;
 /* Twenty levels, each with its own look and its own twist. They sit on a map in this order;
    every 3 stars opens the next one, and at the end of each level a friend is waiting to be saved. */
 const FORMATS = [
@@ -2725,37 +2738,37 @@ const FORMATS = [
   { id: 'toy', name: 'Toy Block Town', em: '🧱', tip: 'Climb the blocks!', sky: ['#FFE27A', '#FFF7D1'], far: '#FFC1D6', near: '#B8E3FF', grass: '#FF6B6B', dirt: '#5CC8FF', dot: '#39A9E6', sun: '#FF9A3D', cloud: '#FFFFFF', deco: 'toy',
     item: 'star', sym: '★', items: 'stars', foe: ['ball', '#B65CFF'], pop: 'Confetti!',
     little: ['stairs', 'bump', 'towers', 'stairs', 'flat', 'towers', 'bump', 'hill'], big: ['stairs', 'towers', 'gap', 'stairs', 'towers', 'gap2', 'hill', 'foe'] },
-  /* ten more worlds */
+  /* ten more worlds: these run for 11 parts (the first ten run for 8) and mix in harder parts */
   { id: 'rocket', name: 'Rocket Ride', em: '🚀', tip: 'Hold to blast up!', sky: ['#0B0F3D', '#3B2A8C'], far: '#2A2470', near: '#1E1A5A', grass: '#9AA3D9', dirt: '#4C4F8F', dot: '#3A3D78', sun: '#FFD9A0', cloud: '#B9B4F5', night: true, deco: 'planets',
     flap: true, grav: 0.34, speed: 1.25, rise: 340, sink: 220, rocket: true, item: 'planet', sym: '◉', items: 'planets', foe: ['ball', '#9A8F86'], pop: 'Shooting star!',
-    little: ['wave', 'float', 'wave', 'pillars', 'wave', 'wave', 'float', 'pillars'], big: ['wave', 'pillars', 'float', 'wave', 'pillars', 'float', 'wave', 'pillars'] },
+    little: ['wave', 'float', 'pillars', 'wave', 'float', 'pillars', 'wave', 'pillars', 'float', 'wave', 'pillars'], big: ['wave', 'pillars', 'float', 'pillars', 'wave', 'float', 'pillars', 'wave', 'pillars', 'float', 'pillars'] },
   { id: 'bouncy', name: 'Bouncy Castle', em: '🏰', tip: 'The floor is bouncy! Jump for a super bounce!', tapTip: 'The floor is bouncy! Tap for a super bounce!', sky: ['#7FD6FF', '#FFE8F6'], far: '#FFB3D1', near: '#FF8FBF', grass: '#FFD23F', dirt: '#FF5C7A', dot: '#E63E62', sun: '#FFF3A8', cloud: '#FFFFFF', deco: 'bunting',
     boing: true, item: 'ball', sym: '●', items: 'bouncy balls', foe: ['ball', '#7C5CFF'], pop: 'Confetti!',
-    little: ['flat', 'bump', 'stairs', 'towers', 'hill', 'flat', 'foe', 'towers'], big: ['flat', 'bump', 'stairs', 'towers', 'clouds', 'hill', 'foe', 'towers'] },
+    little: ['flat', 'bump', 'stairs', 'towers', 'hill', 'foe', 'towers', 'stairs', 'foe2', 'bump', 'towers'], big: ['flat', 'bump', 'stairs', 'towers', 'clouds', 'hill', 'foe', 'towers', 'foe2', 'stairs', 'clouds'] },
   { id: 'roo', name: 'Kangaroo Hop', em: '🦘', tip: 'Jump, then jump again in the air!', tapTip: 'Tap to jump. Tap again in the air to jump higher!', sky: ['#FF9A62', '#FFE3B0'], far: '#E0815A', near: '#C9623F', grass: '#E8B24C', dirt: '#B5522F', dot: '#96401F', sun: '#FFF0B0', cloud: '#FFF4DC', deco: 'rocks',
     double: true, item: 'gem', sym: '◆', items: 'shiny gems', foe: ['ball', '#8C6A4A'], pop: 'Flower power!',
-    little: ['sky', 'bump', 'hill', 'stairs', 'sky', 'clouds', 'foe', 'towers'], big: ['gap', 'sky', 'clouds', 'gap2', 'towers', 'foe2', 'sky', 'stairs'] },
+    little: ['sky', 'bump', 'hill', 'stairs', 'sky', 'clouds', 'foe', 'towers', 'hop', 'foe2', 'sky'], big: ['gap', 'sky', 'clouds', 'gap2', 'towers', 'foe2', 'sky', 'stairs', 'gap', 'foe', 'gap2'] },
   { id: 'rainbow', name: 'Rainbow Road', em: '🌈', tip: 'Super high jumps! Paint a rainbow!', sky: ['#9BE1FF', '#FFF6FB'], far: '#D9C7FF', near: '#B9E4FF', grass: '#FFFFFF', dirt: '#E9D9FF', dot: '#CDB6F5', sun: '#FFF3A8', cloud: '#FFFFFF', deco: 'rainbow',
     jump: 1.2, trail: true, item: 'drop', sym: '💧', items: 'rainbow drops', foe: ['cloud', '#A9A6C9'], pop: 'Rainbow!',
-    little: ['clouds', 'flat', 'stairs', 'towers', 'clouds', 'bump', 'drum', 'foe'], big: ['gap', 'clouds', 'gap', 'towers', 'hill', 'clouds', 'stairs', 'drum'] },
+    little: ['clouds', 'flat', 'stairs', 'towers', 'clouds', 'bump', 'drum', 'foe', 'hop', 'foe2', 'towers'], big: ['gap', 'clouds', 'gap', 'towers', 'hill', 'clouds', 'stairs', 'drum', 'foe2', 'gap', 'foe'] },
   { id: 'garden', name: 'Bug Garden', em: '🐞', tip: 'You are teeny tiny! Bounce on the mushrooms!', sky: ['#8FE3A0', '#F2FFD6'], far: '#6CC76A', near: '#4FAE55', grass: '#59C94B', dirt: '#8A5A3C', dot: '#6E4428', sun: '#FFE98A', cloud: '#F4FFE0', deco: 'flowers',
     size: 0.62, shroom: true, item: 'flower', sym: '✿', items: 'flowers', foe: ['ball', '#E2574C'], pop: 'Flower power!',
-    little: ['drum', 'flat', 'bump', 'drums', 'hill', 'drum', 'foe', 'stairs'], big: ['drum', 'gap', 'drums', 'bump', 'gap2', 'foe', 'drums', 'stairs'] },
+    little: ['drum', 'flat', 'bump', 'drums', 'hill', 'drum', 'foe', 'stairs', 'hop', 'drums', 'foe2'], big: ['drum', 'gap', 'drums', 'bump', 'gap2', 'foe', 'drums', 'stairs', 'gap', 'foe2', 'gap2'] },
   { id: 'dino', name: 'Dino Stomp', em: '🦖', tip: 'You are HUGE! Stomp, stomp, stomp!', sky: ['#FFC978', '#FFF1C9'], far: '#9CCB7A', near: '#6FAE5C', grass: '#4FA64A', dirt: '#9B6B43', dot: '#7C5230', sun: '#FFF3A8', cloud: '#FFF8E6', deco: 'ferns',
     size: 1.45, stompAll: true, item: 'egg', sym: '🥚', items: 'dino eggs', foe: ['ball', '#B88A5A'], pop: 'Stomp!',
-    little: ['foe', 'flat', 'foe2', 'bump', 'hill', 'foe', 'stairs', 'foe2'], big: ['foe2', 'gap', 'foe', 'bump', 'foe2', 'gap', 'hill', 'stairs'] },
+    little: ['foe', 'flat', 'foe2', 'bump', 'hill', 'foe', 'stairs', 'foe2', 'hop', 'towers', 'foe2'], big: ['foe2', 'gap', 'foe', 'bump', 'foe2', 'gap', 'hill', 'stairs', 'gap2', 'foe2', 'towers'] },
   { id: 'magnet', name: 'Magnet Mountain', em: '🧲', tip: 'You are a magnet! The sparks fly to you!', sky: ['#5C7CFA', '#D9E4FF'], far: '#8FA3E8', near: '#6B80D0', grass: '#E9EEFF', dirt: '#5562A8', dot: '#414D8C', sun: '#FFF3A8', cloud: '#FFFFFF', deco: 'peaks',
     magnet: true, item: 'bolt', sym: '⚡', items: 'sparks', foe: ['cloud', '#7F89B8'], pop: 'Rainbow!',
-    little: ['rush', 'hill', 'stairs', 'rush', 'bump', 'clouds', 'foe', 'rush'], big: ['rush', 'gap', 'stairs', 'rush', 'gap2', 'clouds', 'foe2', 'rush'] },
+    little: ['rush', 'hill', 'stairs', 'rush', 'bump', 'clouds', 'foe', 'rush', 'hop', 'towers', 'foe2'], big: ['rush', 'gap', 'stairs', 'rush', 'gap2', 'clouds', 'foe2', 'rush', 'gap', 'towers', 'foe'] },
   { id: 'rain', name: 'Fruit Rain', em: '🍉', tip: 'Yummy fruit falls from the sky! Catch it!', sky: ['#FF9EC4', '#FFF0C9'], far: '#FFB86B', near: '#FF9A4D', grass: '#7BD63C', dirt: '#C7743C', dot: '#A65A28', sun: '#FFF3A8', cloud: '#FFFFFF', deco: 'orchard',
     rain: true, item: 'fruit', sym: '●', items: 'yummy fruits', foe: ['cloud', '#C79AB5'], pop: 'Rainbow!',
-    little: ['flat', 'bump', 'flat', 'hill', 'foe', 'flat', 'stairs', 'flat'], big: ['flat', 'gap', 'bump', 'hill', 'foe', 'gap', 'stairs', 'flat'] },
+    little: ['flat', 'bump', 'flat', 'hill', 'foe', 'flat', 'stairs', 'hop', 'foe2', 'towers', 'bump'], big: ['flat', 'gap', 'bump', 'hill', 'foe', 'gap', 'stairs', 'flat', 'gap2', 'foe2', 'towers'] },
   { id: 'kite', name: 'Kite Hills', em: '🪁', tip: 'Jump, then hold to glide like a kite!', tapTip: 'Tap to jump. Hold your finger down to glide!', sky: ['#59C7F7', '#E6FAFF'], far: '#B6E6A0', near: '#8AD27A', grass: '#4CC267', dirt: '#B98352', dot: '#9C6A3E', sun: '#FFE14D', cloud: '#FFFFFF', deco: 'kites',
     glide: true, item: 'note', sym: '♪', items: 'music notes', foe: ['cloud', '#9AA1C6'], pop: 'Rainbow!',
-    little: ['hill', 'glide', 'stairs', 'glide', 'clouds', 'towers', 'glide', 'foe'], big: ['gap', 'glide', 'gap2', 'glide', 'clouds', 'towers', 'glide', 'foe'] },
+    little: ['hill', 'glide', 'stairs', 'glide', 'clouds', 'towers', 'glide', 'foe', 'hop', 'foe2', 'glide'], big: ['gap', 'glide', 'gap2', 'glide', 'clouds', 'towers', 'glide', 'foe', 'gap', 'foe2', 'gap2'] },
   { id: 'piano', name: 'Piano Path', em: '🎹', tip: 'Every jump plays a note!', sky: ['#3D2C8D', '#C86DD7'], far: '#5B3FB0', near: '#4A2F9A', grass: '#FFFFFF', dirt: '#2E2270', dot: '#4A3AA0', sun: '#FFE9A8', cloud: '#F6D9FF', night: true, deco: 'staff', keys: true,
     piano: true, item: 'note', sym: '♪', items: 'music notes', foe: ['ball', '#FF7AB8'], pop: 'Ta-da!',
-    little: ['stairs', 'flat', 'drum', 'stairs', 'bump', 'towers', 'drums', 'foe'], big: ['stairs', 'gap', 'drum', 'stairs', 'gap2', 'towers', 'drums', 'foe'] }
+    little: ['stairs', 'flat', 'drum', 'stairs', 'bump', 'towers', 'drums', 'foe', 'hop', 'foe2', 'towers'], big: ['stairs', 'gap', 'drum', 'stairs', 'gap2', 'towers', 'drums', 'foe', 'gap', 'foe2', 'gap2'] }
 ];
 const FMT = Object.fromEntries(FORMATS.map(f => [f.id, f]));
 /* a save from the older "plays" system keeps what was earned: one open level for every finished run or saved-up play */
@@ -2833,7 +2846,7 @@ const G = { on: false, raf: 0, keys: { l: false, r: false, j: false }, jq: 0, fx
 function seeded(a) { return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function makeLevel(n, little, F = FORMATS[0]) {
   const rnd = seeded(4021 + n * 7919 + (little ? 17 : 0) + FORMATS.indexOf(F) * 101);
-  const L = { solids: [], clouds: [], notes: [], supers: [], foes: [], checks: [], f: F };
+  const L = { solids: [], clouds: [], notes: [], supers: [], foes: [], checks: [], gaps: [], f: F };
   const ground = (x, w) => L.solids.push({ x, y: GY, w, h: LH + 200 - GY, g: 1 });
   const block = (x, y, w, h) => L.solids.push({ x, y, w, h, g: 1 });
   const cloud = (x, y, w) => L.clouds.push({ x, y, w });
@@ -2847,6 +2860,8 @@ function makeLevel(n, little, F = FORMATS[0]) {
     flat: x => { ground(x, 520); row(x + 110, GY - 56, 6, 56); return x + 520; },
     bump: x => { ground(x, 560); block(x + 190, GY - 64, 140, 64); row(x + 205, GY - 120, 3, 55); return x + 560; },
     gap: x => { ground(x, 300); ground(x + 450, 330); arc(x + 250, x + 520, GY - 70, 130, 5); return x + 780; },
+    /* a small gap for little explorers: one tap in time clears it, and after two falls a cloud bridge appears (see runRespawn) */
+    hop: x => { ground(x, 330); ground(x + 445, 330); arc(x + 285, x + 490, GY - 62, 92, 4); L.gaps.push({ x: x + 330, w: 115 }); return x + 775; },
     gap2: x => { ground(x, 260); cloud(x + 330, GY - 110, 150); ground(x + 570, 300); row(x + 360, GY - 160, 3, 45); return x + 870; },
     foe: x => { ground(x, 640); foe(x + 150, x + 590, GY); row(x + 230, GY - 170, 5, 56); return x + 640; },
     foe2: x => { ground(x, 820); foe(x + 120, x + 400, GY); foe(x + 440, x + 780, GY); row(x + 160, GY - 160, 10, 60); return x + 820; },
@@ -2874,7 +2889,7 @@ function makeLevel(n, little, F = FORMATS[0]) {
   ground(0, 640); row(280, GY - 56, 5, 56); L.checks.push(80);
   let x = 640;
   for (const k of mid) { L.checks.push(x + 40); x = P[k](x); }
-  ground(x, 1000); row(x + 120, GY - 56, 5, 56); L.goal = x + 600; L.w = x + 1000;
+  ground(x, 1240); row(x + 120, GY - 56, 5, 56); L.goal = x + 600; L.w = x + 1240;
   /* always exactly three golden notes, spread along the way */
   L.supers.sort((a, b) => a.x - b.x);
   if (L.supers.length > 3) L.supers = [L.supers[0], L.supers[L.supers.length >> 1], L.supers[L.supers.length - 1]];
@@ -2895,22 +2910,45 @@ function runRespawn() {
   let top = GY; for (const sd of L.solids) if (sd.g && sd.x <= cp && sd.x + sd.w >= cp + p.w) top = Math.min(top, sd.y);
   p.x = cp; p.y = top - p.h - 170; p.vx = 0; p.vy = 0; p.inv = 1.2; p.knock = 0; p.jumping = false;
   AU.slide(true); fxAdd('txt', cp + p.w / 2, top - 120, 'Whoops!');
+  /* fell twice from the same spot: a cloud bridge grows over the small gap just ahead, so nobody gets stuck */
+  G.falls = G.falls || {}; G.falls[cp] = (G.falls[cp] || 0) + 1;
+  if (G.falls[cp] >= 2) for (const g of L.gaps || []) if (!g.done && g.x > cp && g.x < cp + 900) { g.done = 1; L.clouds.push({ x: g.x - 26, y: GY, w: g.w + 52 }); fxAdd('txt', g.x + g.w / 2, GY - 96, 'A cloud bridge!'); }
+}
+const FW_COLS = ['#FF5252', '#FFC93C', '#2FE0C9', '#38B6FF', '#FF6FD8', '#B58CFF', '#7BE04A'];
+/* one firework: a rocket climbs from the ground to (x, y), then bursts (see the 'fwr' case in runStep) */
+function fireworkAt(x, y) { G.fx.push({ k: 'fwr', x, y0: GY - 10, ty: y, t: 0, life: 0.42 }); }
+function fireworkBurst(x, y) {
+  const c1 = pick(FW_COLS), c2 = pick(FW_COLS), n = 34, sp = 230 + Math.random() * 110;
+  for (let i = 0; i < n; i++) {
+    const inner = i % 3 === 0, a = i / n * Math.PI * 2 + Math.random() * 0.2, v = sp * (inner ? 0.5 : 0.8 + Math.random() * 0.3);
+    G.fx.push({ k: 'fw', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 1.1 + Math.random() * 0.6, col: inner ? c2 : c1, r: inner ? 5 : 6.5 + Math.random() * 2.5 });
+  }
+  fxAdd('pop', x, y); G.fwN = (G.fwN || 0) + 1; AU.firework(G.fwN);
 }
 function runWin() {
   G.done = true; G.endT = 0; G.shown = false; G.keys = { l: false, r: false, j: false };
+  /* five or more treats collected: the buddies run in and dance, and fireworks go off */
+  G.party = G.notes >= PARTY_NOTES; G.fwT = 0.5; G.crowd = [];
+  if (G.party) {
+    const rt = G.runTok, pool = BUDDIES.filter(b => b !== G.buddy && b !== PAL());
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    pool.slice(0, 6).forEach((b, i) => runnerImage(b).then(im => { if (G.runTok === rt && G.done) G.crowd[i] = im; }));
+  }
   AU.fanfare();
   for (let i = 0; i < 46; i++) fxAdd('conf', G.lv.goal - 150 + Math.random() * 300, GY - 300);
   const fid = G.lv.f.id, old = S.runBest[fid] || {};
   S.runLevel = (S.runLevel || 0) + 1; S.runBest = { ...S.runBest, [fid]: { saved: 1, sup: Math.max(old.sup || 0, G.sup), plays: (old.plays || 0) + 1 } }; save();
   fxAdd('pop', G.lv.goal, GY - 136); fxAdd('txt', G.lv.goal, GY - 222, `You saved ${PAL().name}!`);
-  VO.seq(['You did it!', `You saved ${PAL().name}!`], G.buddy);
+  if (G.party) fxAdd('txt', G.lv.goal, GY - 268, 'Party time!');
+  VO.seq(['You did it!', `You saved ${PAL().name}!`, ...(G.party ? ['Woo-hoo!'] : [])], G.buddy);
 }
 function runStep(dt) {
   const p = G.p, L = G.lv, lit = G.little, F = L.f;
   G.t += dt;
   if (G.done) {
     const d = L.goal - (p.x + p.w / 2); p.vx = Math.abs(d) > 6 ? Math.sign(d) * 170 : 0; p.face = 1;
-    G.endT += dt; if (G.endT > 2.4 && !G.shown) { G.shown = true; showRunEnd(); }
+    G.endT += dt; if (G.endT > (G.party ? 4.8 : 2.4) && !G.shown) { G.shown = true; showRunEnd(); }
+    if (G.party && G.endT < 16) { G.fwT -= dt; if (G.fwT <= 0) { G.fwT = (G.shown ? 0.75 : 0.36) + Math.random() * 0.3; fireworkAt(L.goal + (Math.random() - 0.5) * 640, GY - 210 - Math.random() * 180); } }
   } else {
     let dir = (G.keys.r ? 1 : 0) - (G.keys.l ? 1 : 0);
     if (G.auto && !dir && p.knock <= 0) dir = 1;
@@ -2952,7 +2990,8 @@ function runStep(dt) {
   p.stuck = G.auto && blocked && (p.on || F.flap || F.boing) && !G.done ? (p.stuck || 0) + dt : 0;
   if (p.stuck > 1.1) { p.stuck = 0; if (F.flap || F.boing) p.lift = 1; else G.jq = 0.14; }
   const prevB = p.y + p.h, wasOn = p.on; p.y += vy * dt; p.on = false;
-  if (p.y < 4) { p.y = 4; if (p.vy < 0) p.vy = 0; }
+  /* only the swimming and flying worlds have a roof (there you hold to go up); in the jumping worlds the view follows the runner up instead */
+  const roof = F.flap ? 4 : -900; if (p.y < roof) { p.y = roof; if (p.vy < 0) p.vy = 0; }
   for (const sd of L.solids) if (hitBox(p, sd)) {
     if (vy > 0) {
       p.y = sd.y - p.h;
@@ -2991,7 +3030,7 @@ function runStep(dt) {
     if (n.got) continue;
     if (n.vy) { n.y += n.vy * dt; if (n.y > GY + 30) { n.got = 2; continue; } }
     if (F.magnet) pull(n, 200);
-    if (Math.abs(n.x - cx) < 34 * pr && Math.abs(n.y - cy) < 42 * pr) { n.got = 1; G.notes++; AU.count(((G.notes - 1) % 15) + 1); fxAdd('spark', n.x, n.y); G.hud = 1; }
+    if (Math.abs(n.x - cx) < 34 * pr && Math.abs(n.y - cy) < 42 * pr) { n.got = 1; G.notes++; AU.count(((G.notes - 1) % 15) + 1); fxAdd('spark', n.x, n.y); G.hud = 1; if (G.notes === PARTY_NOTES) fxAdd('txt', cx, cy - 78, 'Fireworks ready!'); }
   }
   for (const u of L.supers) {
     if (u.got) continue;
@@ -3002,10 +3041,12 @@ function runStep(dt) {
   if (F.trail) { G.trail.push([cx, cy]); if (G.trail.length > 40) G.trail.shift(); }
   if (!G.done && p.y > LH + 60) runRespawn();
   if (!G.done && cx >= L.goal - 150) runWin();
-  for (const f of G.fx) { f.t += dt; if (f.k === 'conf') { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 700 * dt; f.a += dt * 8; } }
+  for (const f of G.fx) { f.t += dt; if (f.k === 'conf') { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 700 * dt; f.a += dt * 8; } else if (f.k === 'fw') { f.x += f.vx * dt; f.y += f.vy * dt; f.vy = f.vy * 0.975 + 210 * dt; f.vx *= 0.975; } else if (f.k === 'fwr' && f.t >= f.life && !f.b) { f.b = 1; fireworkBurst(f.x, f.ty); } }
   G.fx = G.fx.filter(f => f.t < f.life);
-  const vw = G.W / G.sc, want = Math.max(0, Math.min(L.w - vw, cx - vw * 0.36));
+  const vw = G.W / G.sc, want = Math.max(0, Math.min(L.w - vw, G.done ? L.goal - vw * 0.5 : cx - vw * 0.36));
   G.cam += (want - G.cam) * Math.min(1, dt * 7);
+  const vhN = (G.H / G.sc) || LH, wantY = F.flap ? 0 : Math.max(0, 120 - (vhN - LH) - p.y);
+  G.camY = (G.camY || 0) + (wantY - (G.camY || 0)) * Math.min(1, dt * 12);
 }
 /* ---- drawing ---- */
 function rrTop(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x, y + h); c.lineTo(x, y + r); c.arcTo(x, y, x + r, y, r); c.lineTo(x + w - r, y); c.arcTo(x + w, y, x + w, y + r, r); c.lineTo(x + w, y + h); c.closePath(); }
@@ -3224,13 +3265,19 @@ function drawGoal(c, gx, t) {
   if (G.palImg) c.drawImage(G.palImg, -34, -76, 68, 74);
   else { c.fillStyle = PAL().color; c.strokeStyle = INK; c.lineWidth = 4; c.beginPath(); c.ellipse(0, -36, 27, 32, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
   c.restore();
+  /* the party crowd: six buddies pop up on both sides of the stage and hop to the beat */
+  if (free && G.party && G.crowd) G.crowd.forEach((im, i) => {
+    const k = Math.max(0, Math.min(1, (G.endT - 0.5 - i * 0.14) / 0.3)); if (!im || !k) return;
+    const off = [-195, 195, -257, 257, -318, 318][i], hop = Math.abs(Math.sin(t * 7 + i * 1.7)) * 24;
+    c.save(); c.translate(gx + off, GY - hop); c.scale(k, k); c.drawImage(im, -30, -66, 60, 66); c.restore();
+  });
   if (!free) {
     c.font = '700 22px Fredoka, Nunito, sans-serif'; c.textAlign = 'center'; c.lineJoin = 'round'; c.lineWidth = 6; c.strokeStyle = INK;
     c.strokeText('Save me!', gx, GY - 214 + fl); c.fillStyle = '#fff'; c.fillText('Save me!', gx, GY - 214 + fl);
   }
 }
 function runDraw() {
-  const c = G.cx, L = G.lv, th = L.f, sc = G.sc, vw = G.W / sc, vh = G.H / sc, oy = vh - LH, cam = G.cam, t = G.t, p = G.p;
+  const c = G.cx, L = G.lv, th = L.f, sc = G.sc, vw = G.W / sc, vh = G.H / sc, oy = vh - LH, cam = G.cam, t = G.t, p = G.p, camY = G.camY || 0;
   c.setTransform(G.dpr * sc, 0, 0, G.dpr * sc, 0, 0);
   c.fillStyle = G.sky; c.fillRect(0, 0, vw, vh);
   if (th.night) { c.fillStyle = '#fff'; for (const st of G.stars) { c.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.3 + st.x)); c.beginPath(); circ(c, st.x, st.y, st.r); c.fill(); } c.globalAlpha = 1; }
@@ -3238,15 +3285,16 @@ function runDraw() {
   if (th.night) { c.fillStyle = th.sky[0]; c.beginPath(); circ(c, vw - 92, oy + 78, 38); c.fill(); }
   const hill = (par, base, amp, col, f1, f2) => {
     c.fillStyle = col; c.beginPath(); c.moveTo(0, vh);
-    for (let sx = 0; sx <= vw + 24; sx += 24) { const wx = sx + cam * par; c.lineTo(sx, oy + base - amp * (0.6 * Math.sin(wx * f1) + 0.4 * Math.sin(wx * f2 + 1.3))); }
+    for (let sx = 0; sx <= vw + 24; sx += 24) { const wx = sx + cam * par; c.lineTo(sx, oy + camY * par + base - amp * (0.6 * Math.sin(wx * f1) + 0.4 * Math.sin(wx * f2 + 1.3))); }
     c.lineTo(vw + 24, vh); c.closePath(); c.fill();
   };
   hill(0.15, 320, 60, th.far, 0.0031, 0.0083);
-  if (th.deco) DECO[th.deco](c, vw, vh, oy, cam, t);
+  if (th.deco) DECO[th.deco](c, vw, vh, oy + camY * 0.25, cam, t);
   const span = vw + 420;
   for (let i = 0; i < (th.deco === 'sea' ? 0 : 6); i++) { const x = (((i * 430 - cam * 0.3) % span) + span) % span - 210; puff(c, x, oy + 60 + (i % 3) * 48, 170, th.night ? 'rgba(201,194,255,.35)' : 'rgba(255,255,255,.85)'); }
   hill(0.42, 385, 38, th.near, 0.0052, 0.0121);
-  c.save(); c.translate(-cam, oy);
+  if (G.done && G.party) { c.fillStyle = `rgba(16,12,58,${(th.night ? 0.25 : 0.55) * Math.max(0, Math.min(1, (G.endT - 0.15) / 0.8))})`; c.fillRect(0, 0, vw, vh); }
+  c.save(); c.translate(-cam, oy + camY);
   const vis = (x, w) => x < cam + vw + 60 && x + w > cam - 60;
   if (vis(L.goal - 160, 320)) drawGoal(c, L.goal, t);
   for (const sd of L.solids) {
@@ -3329,6 +3377,12 @@ function runDraw() {
     if (f.k === 'spark') { c.fillStyle = f.col; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3, d = 10 + u * 34; c.beginPath(); circ(c, f.x + Math.cos(a) * d, f.y + Math.sin(a) * d, 5 * (1 - u)); c.fill(); } }
     else if (f.k === 'pop') { c.strokeStyle = f.col; c.lineWidth = 7 * (1 - u); c.beginPath(); circ(c, f.x, f.y, 12 + u * 56); c.stroke(); }
     else if (f.k === 'conf') { c.save(); c.translate(f.x, f.y); c.rotate(f.a); c.fillStyle = f.col; c.fillRect(-6, -3, 12, 6); c.restore(); }
+    else if (f.k === 'fw') {
+      c.globalAlpha = Math.max(0, 1 - u * u); c.strokeStyle = f.col; c.lineWidth = f.r * (1 - u * 0.4); c.lineCap = 'round';
+      c.beginPath(); c.moveTo(f.x - f.vx * 0.07, f.y - f.vy * 0.07); c.lineTo(f.x, f.y); c.stroke();
+      c.fillStyle = '#fff'; c.beginPath(); circ(c, f.x, f.y, f.r * 0.3); c.fill(); c.globalAlpha = 1;
+    }
+    else if (f.k === 'fwr') { const k = 1 - (1 - u) * (1 - u), yy = f.y0 + (f.ty - f.y0) * k; c.strokeStyle = '#FFF3A8'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(f.x, yy + 30); c.lineTo(f.x, yy); c.stroke(); }
     else if (f.k === 'txt') {
       c.globalAlpha = 1 - u; c.font = '700 26px Fredoka, Nunito, sans-serif'; c.textAlign = 'center'; c.lineJoin = 'round';
       c.lineWidth = 6; c.strokeStyle = INK; c.strokeText(f.txt, f.x, f.y - u * 50); c.fillStyle = '#fff'; c.fillText(f.txt, f.x, f.y - u * 50); c.globalAlpha = 1;
@@ -3355,7 +3409,7 @@ function runLoop(now) {
   let k = 0; while (G.acc >= STEP && k++ < 8) { runStep(STEP); G.acc -= STEP; }
   if (G.acc > STEP) G.acc = 0;
   runDraw();
-  if (G.hud) { G.hud = 0; $('#rhNotes').textContent = `${G.lv.f.sym} ${G.notes}`; $('#rhSuper').textContent = `Golden ${G.sup}/${G.lv.supers.length}`; }
+  if (G.hud) { G.hud = 0; $('#rhNotes').textContent = `${G.lv.f.sym} ${G.notes}${G.notes >= PARTY_NOTES ? ' 🎉' : ''}`; $('#rhSuper').textContent = `Golden ${G.sup}/${G.lv.supers.length}`; }
 }
 function runStop() { G.on = false; cancelAnimationFrame(G.raf); G.keys = { l: false, r: false, j: false }; $$('.rc.on').forEach(e => e.classList.remove('on')); }
 /* the runner picture: the grown-up's picture if there is one, otherwise the drawn buddy */
@@ -3398,7 +3452,7 @@ function startRun(id, fmtId) {
   G.lv = makeLevel((S.runBest[F.id] || {}).plays || 0, G.little, F);
   const sz = F.size || 1;
   G.p = { x: 90, y: GY - 58 * sz, w: 44 * sz, h: 58 * sz, vx: 0, vy: 0, on: true, face: 1, coyote: 0, inv: 0, knock: 0, jumping: false, sq: 0, run: 0, lift: 0, air: 0 };
-  Object.assign(G, { trail: [], rainT: 0.6, pn: 0, notes: 0, sup: 0, pops: 0, t: 0, acc: 0, done: false, shown: false, endT: 0, fx: [], cam: 0, jq: 0, hud: 1, keys: { l: false, r: false, j: false } });
+  Object.assign(G, { trail: [], rainT: 0.6, pn: 0, notes: 0, sup: 0, pops: 0, t: 0, acc: 0, done: false, shown: false, endT: 0, fx: [], cam: 0, camY: 0, falls: {}, party: false, crowd: [], fwT: 0, fwN: 0, jq: 0, hud: 1, keys: { l: false, r: false, j: false } });
   $('#runPick').hidden = true; $('#runEnd').hidden = true; $('#runMap').hidden = true;
   $('#runCtl').classList.toggle('auto', G.auto);
   $('#rcJ').textContent = F.flap ? (F.balloon ? 'Float!' : F.rocket ? 'Blast!' : 'Swim!') : 'Jump!';
@@ -3419,7 +3473,7 @@ function showRunEnd() {
   $('#runEndBuddy').innerHTML = buddySVG(G.buddy, 'dance') + buddySVG(pal, 'dance');
   $('#runEndTitle').textContent = `You saved ${pal.name}!`;
   $('#runScore').innerHTML = `<span>${F.sym} ${G.notes} ${F.items}</span>${all ? `<span class="sn" aria-label="${G.sup} of ${all} golden notes">${Array.from({ length: all }, (_, i) => `<i class="${i < G.sup ? 'on' : ''}">🌟</i>`).join('')}</span>` : ''}`;
-  $('#runEndNote').textContent = (all && G.sup === all ? 'A golden run! ' : '') + `${pal.name} is safe in ${saved} of ${FORMATS.length} worlds. `
+  $('#runEndNote').textContent = (G.party ? '🎉 Party time! ' : `Catch ${PARTY_NOTES} ${F.items} for fireworks! `) + (all && G.sup === all ? 'A golden run! ' : '') + `${pal.name} is safe in ${saved} of ${FORMATS.length} worlds. `
     + (back ? 'Now back to your game to collect more stars!' : more && !nextOpen ? `Earn ${need} more ${need === 1 ? 'star' : 'stars'} to open the next level.` : '');
   $('#runBack').hidden = !back;
   $('#runNext').hidden = back || !nextOpen;
@@ -3621,7 +3675,6 @@ function boot() {
     else if (t.id === 'vCount') { S.countVoice = t.checked; save(); }
     else if (t.id === 'setRun') { S.runOn = t.checked; save(); }
     else if (t.id === 'setJokes') { S.jokes = t.checked; save(); }
-    else if (t.id === 'setStarAll') { S.starAlways = t.checked; save(); }
     else if (t.id === 'setAll') { S.allBuddies = t.checked; if (t.checked) BUDDIES.forEach(b => { S.seen[b.id] = true; }); save(); AU.apply(); }
   });
   $('#parSet').addEventListener('click', e => {
