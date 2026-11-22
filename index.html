@@ -724,7 +724,7 @@ const ROUND_LEN = 8;
 /* ---------- saved progress (this device only) ---------- */
 const KEY = 'sprunkys.v1';
 const S = { stars: 0, age: 'little', music: true, voice: true, band: {}, best: {}, seen: { bop: true, lulu: true }, greeted: false, bandIntro: false,
-  song: 'pop', tempo: 'normal', voiceMix: true, voiceURI: '', jokes: false, runOn: true, runLevel: 0, countVoice: true, allBuddies: false, runHist: [], learned: {}, step: {}, recVoice: '', runBest: {}, runner: 'pip' };
+  song: 'pop', tempo: 'normal', voiceMix: true, voiceURI: '', jokes: false, runOn: true, runLevel: 0, countVoice: true, allBuddies: false, runHist: [], learned: {}, step: {}, recVoice: '', runBest: {}, runner: 'pip', starAlways: true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
 /* Jump Jam: one play for every 3 stars (at most 3 saved up). A child who already has stars starts with one. */
 const RUN_NEED = 3, NUMW = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five'];
@@ -2002,7 +2002,7 @@ function makeRound(world) {
 }
 function startWorld(world, op) {
   AU.init();
-  R = { id: ++roundSeq, world, i: 0, stars: 0, res: [], qs: [], tries: 0, busy: false, explore: false, svg: null, op: op || null, step: stepIx(world) };
+  R = { id: ++roundSeq, world, i: 0, stars: 0, firsts: 0, res: [], qs: [], tries: 0, busy: false, explore: false, svg: null, op: op || null, step: stepIx(world) };
   $('#host').innerHTML = buddySVG(BY[WORLDS[world].host], 'dance');
   const modes = $('#modes'); modes.hidden = false;
   modes.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === 'quiz')));
@@ -2023,7 +2023,7 @@ function enterWorld(first) {
 function setStep(i) {
   const st = R && R.explore && stepsOf(R.world); if (!st || !st[i] || i === R.step) return;
   R.step = i; S.step = { ...(S.step || {}), [R.world]: i }; S.learned = { ...(S.learned || {}), [learnKey()]: true }; save();
-  Object.assign(R, { qs: [], i: 0, res: [], stars: 0, tries: 0, streak: 0, explore: false });
+  Object.assign(R, { qs: [], i: 0, res: [], stars: 0, firsts: 0, tries: 0, streak: 0, explore: false });
   $('#topTitle').textContent = playTitle();
   setExplore(true);
 }
@@ -2138,8 +2138,11 @@ function onMapHit(h) {
 }
 function correct(q) {
   R.busy = true;
-  const first = R.tries === 0; R.res[R.i] = first ? 'star' : 'ok';
-  if (first) { R.stars++; S.stars++; gainRunStar(); save(); flyStar(); R.streak = (R.streak || 0) + 1; } else R.streak = 0;
+  /* a star for every finished question while "star for every question" is on (the default for a young learner);
+     R.firsts still counts the answers that were right on the first try, and that is what moves him to the next step */
+  const first = R.tries === 0, star = first || S.starAlways !== false; R.res[R.i] = star ? 'star' : 'ok';
+  if (first) { R.firsts = (R.firsts || 0) + 1; R.streak = (R.streak || 0) + 1; } else R.streak = 0;
+  if (star) { R.stars++; S.stars++; gainRunStar(); save(); flyStar(); }
   AU.correct(R.i); renderStaff();
   bounceHost('cheer', 800);
   if (R.svg && q.reveal) q.reveal(R.svg);
@@ -2437,19 +2440,19 @@ function exploreHit(h) {
 
 /* results */
 function finishRound() {
-  const w = R.world, got = R.stars, total = R.qs.length;
+  const w = R.world, got = R.stars, total = R.qs.length, knew = R.firsts || 0;
   S.best[w] = Math.max(S.best[w] || 0, got);
   const fresh = BUDDIES.filter(b => unlocked(b) && !S.seen[b.id]);
   fresh.forEach(b => { S.seen[b.id] = true; S.band[b.id] = true; });
   save(); AU.fanfare(); AU.apply();
-  const title = got === total ? 'Perfect! Superstar!' : got >= 6 ? 'Amazing!' : got >= 3 ? 'Great job!' : 'Good practice!';
+  const title = knew === total ? 'Perfect! Superstar!' : knew >= 6 ? 'Amazing!' : knew >= 3 ? 'Great job!' : 'Good practice!';
   const steps = stepsOf(w); let stepCard = '', stepSay = '';
   if (steps && steps[R.step]) {
-    if (got >= 5 && R.step < steps.length - 1 && stepIx(w) === R.step) {
+    if (knew >= 5 && R.step < steps.length - 1 && stepIx(w) === R.step) {
       const nx = steps[R.step + 1]; S.step = { ...(S.step || {}), [w]: R.step + 1 }; save();
       stepCard = `<div class="unlock"><span class="un-em" aria-hidden="true">🎓</span><div><b>Step ${R.step + 1} done: ${esc(steps[R.step].name)}!</b><span>Next up: ${esc(nx.name)}. A new lesson comes first.</span></div></div>`;
       stepSay = `You finished this step! Next up: ${nx.name}!`;
-    } else if (got < 4) {
+    } else if (knew < 4) {
       const lk = learnKey(); if (S.learned && S.learned[lk]) { delete S.learned[lk]; save(); }
       stepCard = `<div class="unlock"><span class="un-em" aria-hidden="true">📖</span><div><b>Let's practice ${esc(steps[R.step].name)} some more.</b><span>The lesson comes first next time.</span></div></div>`;
     }
@@ -2551,6 +2554,7 @@ function renderParSet() {
 <div class="par-sec"><h3>Games and jokes</h3>
 <label class="tgl"><input type="checkbox" id="setRun"${S.runOn !== false ? ' checked' : ''}> Jump Jam map: a new level opens for every ${RUN_NEED} stars (open levels can be played again any time)</label>
 <div class="par-btns"><button class="chip" type="button" id="giveRun">Open 1 more level</button><span class="par-mini" id="runCount">Levels open: ${S.runOpen || 0} of ${FORMATS.length}</span></div>
+<label class="tgl"><input type="checkbox" id="setStarAll"${S.starAlways !== false ? ' checked' : ''}> A star for every question, even after a wrong try (turn off when he is older)</label>
 <label class="tgl"><input type="checkbox" id="setJokes"${S.jokes ? ' checked' : ''}> Joke picker at the end of a round</label>
 <label class="tgl"><input type="checkbox" id="setAll"${S.allBuddies ? ' checked' : ''}> All 20 buddies are in the band now (no waiting for stars)</label></div>`;
 }
@@ -3617,6 +3621,7 @@ function boot() {
     else if (t.id === 'vCount') { S.countVoice = t.checked; save(); }
     else if (t.id === 'setRun') { S.runOn = t.checked; save(); }
     else if (t.id === 'setJokes') { S.jokes = t.checked; save(); }
+    else if (t.id === 'setStarAll') { S.starAlways = t.checked; save(); }
     else if (t.id === 'setAll') { S.allBuddies = t.checked; if (t.checked) BUDDIES.forEach(b => { S.seen[b.id] = true; }); save(); AU.apply(); }
   });
   $('#parSet').addEventListener('click', e => {
