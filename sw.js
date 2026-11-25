@@ -1,7 +1,7 @@
 /* Sprunky's offline cache. The game page is fetched fresh when there is internet (so updates arrive) and from the cache when there is not. */
-const V = 'sprunkys-v13';
+const V = 'sprunkys-v14';
 const CORE = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
-const BIG = ['voice-maya.json', 'voice-maya.mp3'];
+const BIG = ['voice-alice.json', 'voice-alice.mp3', 'voice-carter.json', 'voice-carter.mp3'];
 const box = () => caches.open(V);
 self.addEventListener('install', e => {
   /* the small files must all arrive; the voice files are tried here too and, if that fails, saved the first time the game asks for them */
