@@ -194,7 +194,7 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
   display:flex;flex-direction:column;justify-content:center;gap:2px}
 .bubble::before{content:"";position:absolute;left:-11px;top:50%;margin-top:-11px;border:11px solid transparent;border-left:0;border-right-color:var(--surface)}
 #qText{font:600 clamp(19px,1.4vw + 13px,31px)/1.2 var(--f-display);text-wrap:balance}
-#qText .flag{font-size:1.25em;vertical-align:-.08em;margin-right:.2em}
+#qText .flag{font-size:1.7em;vertical-align:-.08em;margin-right:.2em}
 #qFb{font:800 clamp(14px,.6vw + 11px,18px)/1.3 var(--f-body);color:var(--muted)}
 #qFb:empty{display:none}
 #btnRepeat{width:56px;height:56px;border-radius:50%;background:var(--sun);color:#1E2250}
@@ -805,7 +805,7 @@ input{-webkit-user-select:text;user-select:text}
 .kc-card.nudge{animation:pulse .8s ease-in-out 3}
 .flag .flagpic{height:.8em;width:1.108em;vertical-align:-.07em;border-radius:.1em;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 2px 0 2px rgba(0,0,0,.18)}
 .lr-name .flag{font-size:1.3em;margin-right:14px}
-.choice .flag{font-size:1.25em;margin-right:.4em}
+.choice .flag{font-size:1.7em;margin-right:.45em}
 .map.gx-hi .cg.kc .k{transition:fill .45s,opacity .35s}
 .map.gx-hi .cg.kc .k:not(.on){opacity:.45}
 .map.gx-hi .gxed{fill:#fff}
@@ -815,6 +815,10 @@ input{-webkit-user-select:text;user-select:text}
 .gxloc path.on{fill:var(--pop)}
 .gxloc .v{fill:rgba(255,255,255,.4);stroke:var(--pop);stroke-width:2.5px;vector-effect:non-scaling-stroke}
 .gxloc .d{fill:var(--pop);stroke:#fff;stroke-width:1.5px;vector-effect:non-scaling-stroke;animation:gxring 1s ease-in-out infinite}
+#learn .lr-card.has-flag{position:relative;--fw:104px;padding-left:calc(var(--fw) + 32px)}
+.lr-flag{position:absolute;left:16px;top:50%;transform:translateY(-50%);line-height:0}
+.lr-flag .flagpic{display:block;width:var(--fw);height:calc(var(--fw)*.7222);border-radius:9px;box-shadow:0 0 0 3px #fff,0 4px 0 3px rgba(0,0,0,.22)}
+@supports (width:clamp(1px,2px,3px)){#learn .lr-card.has-flag{--fw:clamp(72px,13.5vw,150px)}}
 /* [geo css] maps: new styles go below this line */
 #stage>.mapbox{aspect-ratio:auto;flex:1 1 0;max-height:none;min-height:150px;align-self:stretch}
 .mapbox .gxport{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:5px solid #fff;border-radius:26px;overflow:hidden;background:var(--sea);box-shadow:0 5px 0 var(--shadow)}
@@ -3959,7 +3963,7 @@ function showLearn(i, first) {
   const it = L.items[L.i], svg = R.svg;
   if (!svg) $('#lvis').innerHTML = it.vis; else learnMapShow(svg, it);
   $('#learn').innerHTML = `<button class="lr-nav" type="button" data-go="-1" aria-label="Go back one">◀</button>
-<div class="lr-card"><div class="lr-name">${it.flag ? flagSpan(it.flag) : it.em ? `<span class="lr-em" aria-hidden="true">${it.em}</span>` : ''}${esc(it.name)}${it.kf ? `<span class="lr-kf" aria-hidden="true">${it.kf}</span>` : ''}</div>
+<div class="lr-card${it.flag && flagPic(it.flag.code) ? ' has-flag' : ''}">${it.flag && flagPic(it.flag.code) ? `<span class="lr-flag">${flagPic(it.flag.code)}</span>` : ''}<div class="lr-name">${it.flag ? '' : it.em ? `<span class="lr-em" aria-hidden="true">${it.em}</span>` : ''}${esc(it.name)}${it.kf ? `<span class="lr-kf" aria-hidden="true">${it.kf}</span>` : ''}</div>
 <div class="lr-say">${it.sayHtml || `say it: <b>${esc(SAY[it.key] || it.name)}</b>`}</div><div class="lr-fact">${esc(it.text)}</div>
 <div class="lr-btns"><button class="chip" type="button" data-hear="1">🔊 Hear it</button><button class="chip" type="button" data-hear="slow">🐢 Slowly</button><span class="lr-n">${L.i + 1} of ${n}</span><button class="chip go" type="button" data-quiz="1">Quiz me!</button></div></div>
 <button class="lr-nav" type="button" data-go="1" aria-label="Next one">▶</button>`;
