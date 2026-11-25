@@ -782,6 +782,27 @@ input{-webkit-user-select:text;user-select:text}
   #lvis ~ #learn{gap:6px}
   .lx-facts.tt{grid-template-columns:repeat(2,auto)}
 }
+/* countries, one continent at a time: the continent cards and the "known for" pictures */
+.kc-pick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(8px,1.4vw,14px);width:100%;max-width:880px;flex:none}
+.kc-card{position:relative;border:none;border-radius:22px;background:var(--surface);color:var(--ink);cursor:pointer;padding:8px 8px 9px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  box-shadow:0 5px 0 var(--shadow);min-width:0;font:inherit;-webkit-tap-highlight-color:transparent}
+.kc-card:active{transform:translateY(4px);box-shadow:0 1px 0 var(--shadow)}
+.kc-map{position:relative;display:block;width:100%;height:0;padding-top:58%;padding-top:clamp(52%,calc((100vh - 330px)/4.4),66%);border-radius:15px;background:var(--sea);overflow:hidden}
+.kc-map svg{position:absolute;left:4%;top:5%;width:92%;height:90%;display:block}
+.kc-map path{stroke:#fff;stroke-width:.7px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.kc-globe{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;font-size:clamp(40px,7.5vw,78px);line-height:1}
+.kc-lock{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;font-size:clamp(30px,5vw,48px);line-height:1}
+.kc-card b{font:700 17px/1.1 var(--f-display);font-size:clamp(14px,.9vw + 9px,20px);text-align:center}
+.kc-card small{font:800 13px/1.1 var(--f-body);color:var(--muted)}
+.kc-card.cur{box-shadow:0 0 0 5px var(--sun),0 5px 0 var(--shadow);animation:bob 1.1s ease-in-out infinite}
+.kc-card.locked svg,.kc-card.locked .kc-globe{filter:grayscale(1);opacity:.35}
+.kc-card.locked b{color:var(--muted)}
+.kc-tick{position:absolute;top:-6px;right:-4px;width:30px;height:30px;border-radius:50%;background:var(--good);color:#fff;font:800 19px/30px var(--f-body);font-style:normal;text-align:center;box-shadow:0 3px 0 var(--shadow)}
+.kc-pic{font-size:72px;font-size:clamp(50px,min(11vw,11vh),96px);line-height:1.15;letter-spacing:.12em;text-align:center}
+.lr-name .lr-kf{margin-left:10px;letter-spacing:.06em}
+@media (max-width:560px){.kc-pick{grid-template-columns:repeat(2,minmax(0,1fr))}.kc-map{padding-top:52%}}
+@media (prefers-reduced-motion:reduce){.kc-card.cur{animation:none}}
+.kc-card.nudge{animation:pulse .8s ease-in-out 3}
 /* [geo css] maps: new styles go below this line */
 #stage>.mapbox{aspect-ratio:auto;flex:1 1 0;max-height:none;min-height:150px;align-self:stretch}
 .mapbox .gxport{position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;border:5px solid #fff;border-radius:26px;overflow:hidden;background:var(--sea);box-shadow:0 5px 0 var(--shadow)}
@@ -1267,7 +1288,7 @@ const rand = n => Math.floor(Math.random() * n), pick = a => a[rand(a.length)];
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const INK = '#2B2F5E';
-const ROUND_LEN = 8;
+const ROUND_LEN = 8, KC_LEN = 10, roundLen = w => (w === 'countries' ? KC_LEN : ROUND_LEN);
 /* extension points: each part of the game adds itself here instead of editing the shared code.
    TESTAPI: names for the test harness (window.SPRUNKYS). SHOW_HOOKS: f(screenName) after every screen change.
    HOME_TILES: functions that return the HTML of one extra home tile (<button class="tile" data-w="ID">). TILE_OPEN[ID]: what a tap on that tile does. */
@@ -1551,7 +1572,7 @@ const STEPS = {
   numbers: [{ name: '1 to 5', lo: 1, hi: 5 }, { name: '6 to 10', lo: 6, hi: 10 }, { name: 'All numbers', lo: 1, hi: 10, all: true }],
   math: [{ name: 'Small numbers', small: true }, { name: 'Bigger numbers' }, { name: 'Past 10' }]
 };
-const stepsOf = world => (S.age !== 'big' && STEPS[world]) || null;
+const stepsOf = world => ((world === 'countries' || S.age !== 'big') && STEPS[world]) || null;
 const stepIx = world => { const st = stepsOf(world); return st ? Math.max(0, Math.min(st.length - 1, Number(S.step && S.step[world]) || 0)) : 0; };
 const curStep = world => { const st = stepsOf(world); return st ? st[R && R.world === world && Number.isInteger(R.step) ? R.step : stepIx(world)] : null; };
 const LOOKALIKE = { b:'dpq', d:'bpq', p:'qbd', q:'pdb', m:'nw', n:'mhu', u:'nv', w:'mv', i:'jl', j:'ig', l:'it', h:'nk', a:'oe', e:'ac', g:'qj', t:'fl', f:'tk', c:'oe', o:'ca', v:'wy', y:'vg' };
@@ -2281,6 +2302,158 @@ function GX_LINES() {
 }
 Object.assign(TESTAPI, { GX, GX_LIST, GX_LINES, GX_FLOW, GX_OCEAN, gxScene, gxSnap, gxContScene, gxCountryScene, gxOceanScene, gxRiverScene, gxTapQ, gxClue, gxDist, gxLand, gxSpot, gxDecor, gxRing, gxBack, gxGeom, hitInfo, mountMap, oceanAt,
   gxLast: () => GX_LAST });
+
+/* ---------- countries, one continent at a time: a lesson and a 10-question quiz for each continent; 8 of 10 stars (80%) open the next one ---------- */
+/* what a child remembers about each country: [pictures, the words after "... is known for"] */
+const KNOWN = {
+  US: ['🗽🦅', 'the Statue of Liberty and bald eagles'], CA: ['🍁🏒', 'maple syrup, ice hockey and lots of snow'], MX: ['🌮🎺', 'tacos, piñatas and mariachi music'],
+  CU: ['🚗🎶', 'bright old cars and salsa music'], JM: ['🏃🎶', 'reggae music and super fast runners'], GT: ['🦜', 'old Maya pyramids and a bird with a very long green tail'],
+  CR: ['🦥🐸', 'rainforests full of sloths, toucans and tiny frogs'], PA: ['🚢', 'the Panama Canal, a shortcut for big ships'], DO: ['⚾🏖️', 'baseball and sunny beaches'],
+  SV: ['🌋🌽', 'volcanoes and yummy stuffed tortillas called pupusas'], HN: ['🦜🐠', 'bright red macaws and coral reefs full of fish'], NI: ['🌋🏝️', 'a giant lake with volcanoes in it'],
+  BR: ['⚽🦜', 'soccer, carnival parades and the Amazon rainforest'], AR: ['💃⚽', 'tango dancing and soccer'], CO: ['☕🌺', 'coffee, arepas and beautiful flowers'],
+  PE: ['🦙🏔️', 'llamas, and Machu Picchu, an old city high in the mountains'], CL: ['🏔️🐧', 'being very long and skinny, with snowy mountains and penguins'], VE: ['💦', 'Angel Falls, the tallest waterfall in the world'],
+  EC: ['🐢', 'the giant tortoises of the Galápagos Islands'], UY: ['🤠🐄', 'cowboys called gauchos, and lots of cows'], PY: ['🎶🏞️', 'harp music and wide rivers'],
+  BO: ['🧂🦙', 'a giant white salt flat that shines like a mirror'],
+  GB: ['💂🚌', "Big Ben, red buses and the King's guards with tall furry hats"], FR: ['🗼🥐', 'the Eiffel Tower and croissants'], ES: ['💃🥘', 'flamenco dancing and a rice dish called paella'],
+  IT: ['🍕🍝', 'pizza, pasta and ice cream called gelato'], DE: ['🏰🥨', 'fairy-tale castles and pretzels'], GR: ['🏛️🏃', 'very old temples and the first Olympic Games'],
+  PT: ['⛵', 'brave sea explorers and pretty blue tiles'], NL: ['🌷🚲', 'tulips, windmills and bicycles'], IE: ['☘️🌈', 'green hills, shamrocks and stories about leprechauns'],
+  NO: ['🌌⛵', 'Vikings, and the northern lights dancing in the sky'], SE: ['🐴', 'yummy meatballs and little red wooden horses'], PL: ['🥟', 'dumplings called pierogi, and big woolly bison'],
+  AT: ['🎻⛷️', 'beautiful music and snowy mountains for skiing'], DK: ['🧜‍♀️🧱', 'the Little Mermaid story and toy building bricks'], CH: ['🍫🧀', 'chocolate, cheese with holes and snowy mountains'],
+  UA: ['🌻', 'big fields of yellow sunflowers'], BE: ['🧇🍫', 'waffles, chocolate and fries'], FI: ['🎅🦌', 'reindeer, snow and the village of Santa Claus'],
+  IS: ['🌋🧊', 'volcanoes, ice and hot water that shoots out of the ground'], RU: ['❄️🐻', 'being the biggest country in the world, and dolls that hide inside each other'],
+  EG: ['🐫🏜️', 'giant pyramids and camels'], KE: ['🦁🦒', 'safaris with lions, giraffes and elephants'], ZA: ['🦏🐧', 'safaris with rhinos, and penguins that live on the beach'],
+  NG: ['🥁🎶', 'having more people than any other country in Africa, and lots of drums and music'], MA: ['🍵🏜️', 'colorful markets, sweet mint tea and the edge of the Sahara desert'],
+  ET: ['☕🏃', 'being the first home of coffee, and runners who can run very far'], GH: ['🍫', 'cocoa beans for making chocolate, and bright cloth called kente'],
+  TZ: ['🏔️🦓', 'Mount Kilimanjaro, the tallest mountain in Africa, and herds of zebras'], SN: ['🌳', 'giant baobab trees and a lake that can look pink'],
+  MG: ['🦎', 'lemurs, and chameleons that change color'], DZ: ['🏜️🐪', 'being the biggest country in Africa, with lots of Sahara sand'], UG: ['🦍', 'mountain gorillas'],
+  CN: ['🐼', 'giant pandas and the Great Wall'], JP: ['🍣🚄', 'sushi, super fast bullet trains and cherry blossoms'], IN: ['🐯🍛', 'the Taj Mahal, tigers and spicy curry'],
+  KR: ['🥋🎤', 'taekwondo, K-pop music and a spicy food called kimchi'], TH: ['🐘', 'elephants and shiny golden temples'], VN: ['🍜', 'noodle soup called pho, and pointy cone hats'],
+  PH: ['🏝️', 'more than seven thousand islands'], ID: ['🦎🌋', 'Komodo dragons, the biggest lizards in the world'], SA: ['🐪🏜️', 'big sandy deserts and camels'],
+  TR: ['🎈', 'skies full of hot-air balloons, and a city that sits on two continents'], PK: ['🚚🏔️', 'trucks painted in bright colors, and very tall mountains'],
+  NP: ['🏔️', 'Mount Everest, the tallest mountain in the world'], MN: ['🐎⛺', 'horses, and round tent houses called gers'], AE: ['🏙️', 'the tallest building in the world'],
+  MY: ['🦧🌴', 'rainforests where orangutans live'], IR: ['🐈', 'fluffy Persian cats and beautiful woven carpets'],
+  AU: ['🦘🐨', 'kangaroos and koalas'], NZ: ['🐑🐦', 'kiwi birds and lots and lots of sheep'], FJ: ['🏝️🐠', 'palm tree islands and warm blue sea full of bright fish'],
+  PG: ['🦜', 'birds of paradise with fancy feathers'], WS: ['🥥🌴', 'coconut trees and beach houses with no walls']
+};
+const KC_PASS = 0.8, kcNeed = total => Math.ceil(total * KC_PASS);
+STEPS.countries = [{ name: 'North America', c: 'na' }, { name: 'South America', c: 'sa' }, { name: 'Europe', c: 'eu' }, { name: 'Africa', c: 'af' }, { name: 'Asia', c: 'as' },
+  { name: 'Oceania', c: 'au' }, { name: 'Whole world', all: true }];
+/* the countries a little explorer meets in each continent (a big explorer meets every country of the continent) */
+const KC_LITTLE = { na: 'US CA MX CU JM', sa: 'BR AR CO PE CL', eu: 'GB FR ES IT DE', af: 'EG KE ZA NG MA', as: 'CN JP IN KR TH', au: 'AU NZ FJ PG' };
+if (S.kcOpen == null) S.kcOpen = 0;
+if (!S.kcBest) S.kcBest = {};
+/* the last continent that is open (0 = only North America). Grown-ups can open them all. */
+const kcEarned = () => Math.max(0, Math.min(STEPS.countries.length - 1, Number(S.kcOpen) || 0));
+const kcOpen = () => (S.kcAll ? STEPS.countries.length - 1 : kcEarned());
+const kcName = c => theName(c).replace(/^t/, 'T');
+const kcFact = c => `${kcName(c)} is known for ${KNOWN[c.code][1]}.`;
+function kcSet(st, little) {
+  if (!st || st.all) return COUNTRIES.filter(x => little ? x.tier === 1 : x.tier <= 2);
+  return little ? KC_LITTLE[st.c].split(' ').map(k => GX_T[k]) : COUNTRIES.filter(x => x.cont[0] === st.c);
+}
+function kcLearnItems(little) {
+  const st = curStep('countries'), one = st && !st.all;
+  return kcSet(st, little).map(c => ({ k: 'k', id: c.code, name: c.name, key: c.name, at: [c.lon, c.lat], flag: c, c: c.cont, stk: c.cont[0], kf: KNOWN[c.code][0],
+    text: (one ? kcFact(c) : `${c.name} is in ${c.cont.map(contName).join(' and ')}. It is known for ${KNOWN[c.code][1]}.`) + (!little && c.cap ? ` Its capital city is ${c.cap.replace(/\.$/, '')}.` : '') }));
+}
+const kcLessonTitle = st => !st ? WORLDS.countries.exploreText : st.all ? "Let's meet countries from the whole world!" : `Let's meet the countries of ${st.name}!`;
+/* "Which country is known for tacos?": the other answers come from the same continent */
+function kcKnownQ(c, little) {
+  const K = KNOWN[c.code], n = little ? 3 : 4, set = kcSet(curStep('countries'), little);
+  const near = shuffle(set.filter(x => x !== c && x.cont[0] === c.cont[0])), far = shuffle(set.filter(x => x !== c && x.cont[0] !== c.cont[0]));
+  const more = shuffle(COUNTRIES.filter(x => x !== c && x.cont[0] === c.cont[0] && !set.includes(x)));
+  const opts = [c, ...near, ...more, ...far].slice(0, n);
+  return { key: 'F' + c.code, text: `Which country is known for ${K[1]}?`, say: `Which country is known for ${K[1]}?`,
+    visual: `<div class="kc-pic" aria-hidden="true">${K[0]}</div>`, textChoices: true,
+    choices: shuffle(opts).map(x => ({ label: `${flagOf(x.code)} ${x.name}`.trim(), value: x.code, say: x.name })), answer: c.code, echo: c.name, sayA: c.name,
+    clue: `It starts with the letter ${c.name[0]}. Tap the little speakers to hear each name.`,
+    wrongMsg: v => `${kcName(GX_T[v])} is known for ${KNOWN[v][1]}. Try again!`,
+    win: `Yes! ${kcFact(c)}` };
+}
+/* "Tap Mexico!" on the map; the cheer says what the country is known for, so the place and the fact stick together */
+function kcTapQ(c, little) { const q = gxTapQ(c, little); q.win = `Yes! That's ${theName(c)}, known for ${KNOWN[c.code][1]}!`; return q; }
+/* the quiz of one continent: every country comes up, half the questions are "tap it on the map", half are "known for" */
+function kcRound(little) {
+  const st = curStep('countries'); if (!st || st.all) return null;
+  const cs = shuffle(kcSet(st, little)), out = [];
+  for (let pass = 0; out.length < KC_LEN && pass < 8; pass++) {
+    const part = shuffle(cs.slice(0, KC_LEN - out.length).map((c, i) => ((i + pass) % 2 ? kcKnownQ(c, little) : kcTapQ(c, little))));
+    if (out.length && part.length > 1 && part[0].answer === out[out.length - 1].answer) part.push(part.shift());
+    out.push(...part);
+  }
+  return out;
+}
+/* the little map on a continent card: its countries in their map colors */
+function kcMini(st) {
+  if (st.all) return '<span class="kc-globe" aria-hidden="true">🌍</span>';
+  const [x, y, w, h] = gxWin(GX_WIN[st.c]);
+  return `<svg viewBox="${x.toFixed(0)} ${y.toFixed(0)} ${w.toFixed(0)} ${h.toFixed(0)}" aria-hidden="true">${GX_LIST.filter(c => c.d && (c.cont === st.c || (c.code === 'RU' && st.c === 'as'))).map(c => `<path fill="${GX_COL[c.n]}" d="${c.d}"/>`).join('')}</svg>`;
+}
+const kcPickSay = () => {
+  const steps = STEPS.countries, open = kcOpen(), cur = Math.min(stepIx('countries'), open);
+  if (!open && S.kcBest.na == null) return "Let's learn the countries, one continent at a time! Tap North America to start!";
+  return steps[cur].all ? 'Pick a continent! You opened the whole world!' : `Pick a continent! You are learning ${steps[cur].name}.`;
+};
+/* the first screen of Countries: seven cards. Open ones can be played, the next one opens with 8 of 10 stars. */
+function kcPick() {
+  const steps = STEPS.countries, open = kcOpen(), cur = Math.min(stepIx('countries'), open);
+  R.picking = 'kc'; R.q = null; R.explore = false; R.learn = null; R.svg = null; yourTurn(false);
+  $('#modes').hidden = true; $('#btnHint').hidden = true;
+  $('#topTitle').textContent = WORLDS.countries.name;
+  $('#qText').textContent = 'Pick a continent!'; $('#staff').innerHTML = '';
+  $('#qFb').textContent = open < steps.length - 1 ? `Get ${kcNeed(KC_LEN)} of ${KC_LEN} stars in ${steps[open].name} to open ${steps[open + 1].all ? 'the whole world' : steps[open + 1].name}.` : 'Every continent is open!';
+  $('#stage').innerHTML = `<div class="kc-pick">${steps.map((st, i) => {
+    const locked = i > open, best = S.kcBest[st.c || 'all'];
+    return `<button type="button" class="kc-card${locked ? ' locked' : ''}${i === cur ? ' cur' : ''}" data-kc="${i}" aria-label="${esc(st.name)}${locked ? ', locked' : ''}">
+<span class="kc-map">${kcMini(st)}${locked ? '<span class="kc-lock" aria-hidden="true">🔒</span>' : ''}</span><b>${esc(st.name)}</b>
+<small>${locked ? 'Locked' : best != null ? `⭐ ${best} of ${KC_LEN}` : 'New!'}</small>${i < open ? '<i class="kc-tick" aria-hidden="true">✓</i>' : ''}</button>`;
+  }).join('')}</div>`;
+  hostSay(kcPickSay());
+}
+function kcChoose(i) {
+  if (!R || R.picking !== 'kc') return;
+  const steps = STEPS.countries, open = kcOpen();
+  if (!steps[i]) return;
+  if (i > open) {
+    const msg = `That one is still locked. Get ${NW[kcNeed(KC_LEN)]} stars in ${steps[open].name} first!`;
+    AU.tap(); $('#qFb').textContent = msg; hostSay(msg);
+    const cb = $(`#stage .kc-card[data-kc="${open}"]`); if (cb) { cb.classList.remove('nudge'); void cb.offsetWidth; cb.classList.add('nudge'); }
+    return;
+  }
+  AU.tap(); R.picking = false; R.step = i; S.step = { ...(S.step || {}), countries: i }; save();
+  $('#topTitle').textContent = playTitle();
+  enterWorld(false);
+}
+/* the end of a countries quiz: 80% opens the next continent; a low score brings the lesson back */
+function kcFinish(got, total) {
+  const steps = STEPS.countries, st = steps[R.step], need = kcNeed(total), id = st.c || 'all', nx = steps[R.step + 1];
+  S.kcBest = { ...S.kcBest, [id]: Math.max(S.kcBest[id] || 0, got) };
+  let card = '', say = '';
+  if (got >= need) {
+    if (nx && R.step === kcEarned()) {
+      S.kcOpen = R.step + 1; S.step = { ...(S.step || {}), countries: R.step + 1 };
+      if (!S.kcAll) card = `<div class="unlock"><span class="un-em" aria-hidden="true">🔓</span><div><b>You opened ${nx.all ? 'the whole world' : esc(nx.name)}!</b><span>${got} of ${total} stars in ${esc(st.name)}. A new lesson comes first.</span></div></div>`;
+      if (!S.kcAll) say = nx.all ? 'You know all the continents! Now you can play with the whole world!' : `You opened a new continent! Next up: ${nx.name}!`;
+    }
+  } else {
+    if (got < need - 2) { const lk = learnKey(); if (S.learned && S.learned[lk]) delete S.learned[lk]; }
+    const gate = nx && !S.kcAll && R.step === kcEarned();
+    card = `<div class="unlock"><span class="un-em" aria-hidden="true">${gate ? '🔒' : '📖'}</span><div><b>${gate ? `${need} stars open ${nx.all ? 'the whole world' : esc(nx.name)}.` : `Let's practice ${esc(st.name)} some more.`}</b><span>You got ${got}. ${got < need - 2 ? 'The lesson comes first next time.' : 'So close! Try again.'}</span></div></div>`;
+    say = gate ? `You need ${NW[need]} stars to open the next continent. Let's practice some more!` : '';
+  }
+  save();
+  return { card, say };
+}
+const kcTileBit = () => { const n = STEPS.countries.length - 1, o = Math.min(n, kcOpen() + 1); return kcOpen() >= n ? '🌎 All open!' : `🌎 ${o} of ${n} open`; };
+/* every new spoken line of this part (for the voice recordings) */
+function KC_LINES() {
+  const steps = STEPS.countries, out = ["Let's learn the countries, one continent at a time! Tap North America to start!", 'Pick a continent! You opened the whole world!', 'Pick a continent! Tap one!',
+    'You know all the continents! Now you can play with the whole world!', "You need eight stars to open the next continent. Let's practice some more!", "Let's meet countries from the whole world!"];
+  for (const st of steps) if (!st.all) out.push(`Pick a continent! You are learning ${st.name}.`, `Let's meet the countries of ${st.name}!`, `You opened a new continent! Next up: ${st.name}!`, `That one is still locked. Get eight stars in ${st.name} first!`);
+  for (const c of COUNTRIES) out.push(kcFact(c), `Which country is known for ${KNOWN[c.code][1]}?`, `${kcName(c)} is known for ${KNOWN[c.code][1]}. Try again!`, `That's ${theName(c)}, known for ${KNOWN[c.code][1]}!`, `${c.name} is in ${c.cont.map(contName).join(' and ')}. It is known for ${KNOWN[c.code][1]}.`);
+  return out;
+}
+Object.assign(TESTAPI, { KNOWN, KC_LITTLE, KC_LINES, kcSet, kcRound, kcKnownQ, kcTapQ, kcPick, kcChoose, kcOpen, kcEarned, kcFinish, kcLearnItems });
 
 /* ---------- sound: a tiny synth band, one layer per buddy ---------- */
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -3102,8 +3275,9 @@ const GEN = {
         clue: CONT.an.clue, at: CONT.an.at, stk: 'an', sayA: 'Antarctica',
         reveal: svg => flashLand(svg, ['an']), hint: svg => hintLand(svg, ['an']) };
     }
-    const c = pick(COUNTRIES.filter(x => little ? x.tier === 1 : true));
-    if (Math.random() < (little ? 0.5 : 0.6)) return gxTapQ(c, little);
+    const c = pick(COUNTRIES.filter(x => little ? x.tier === 1 : true)), z = Math.random();
+    if (z < 0.3) return kcKnownQ(c, little);
+    if (z < 0.65) return kcTapQ(c, little);
     const two = c.cont.length > 1, oce = c.cont[0] === 'au' && c.code !== 'AU';
     return { key: 'K' + c.code, html: `${flagSpan(c)}Where is ${esc(c.name)}?`,
       say: oce ? `${c.name}! Which part of the world is ${c.name} in? Tap it on the map!` : `${c.name}! Which continent is ${c.name} in? Tap it on the map!`,
@@ -3199,7 +3373,7 @@ function renderHome() {
   }
   let html = '';
   for (const [id, w] of Object.entries(WORLDS)) {
-    const best = S.best[id] != null ? `Best: ${S.best[id]} of ${ROUND_LEN} stars` : 'New!';
+    const best = id === 'countries' ? kcTileBit() : S.best[id] != null ? `Best: ${S.best[id]} of ${ROUND_LEN} stars` : 'New!';
     html += `<button class="tile" type="button" data-w="${id}" style="--tc:${w.tc || BY[w.host].color}"><span class="badge">${w.badge}</span><b>${w.name}</b><small>${stepsOf(id) && !STEPS[id][stepIx(id)].all ? `Step ${stepIx(id) + 1}: ${STEPS[id][stepIx(id)].name}` : subOf(w)}</small><span class="best">${best}</span>${buddySVG(BY[w.host], 'dance')}</button>`;
   }
   if (S.runOn !== false) {
@@ -3213,8 +3387,9 @@ function renderHome() {
 
 function makeRound(world) {
   const out = [], used = new Set(), little = S.age !== 'big';
+  if (world === 'countries') { const kr = kcRound(little); if (kr) return kr; }
   let g = 0;
-  while (out.length < ROUND_LEN && g++ < 600) {
+  while (out.length < roundLen(world) && g++ < 600) {
     const q = GEN[world](little), last = out[out.length - 1];
     if (last && last.key === q.key) continue;
     if (used.has(q.key) && g < 300) continue;
@@ -3231,10 +3406,11 @@ function startWorld(world, op) {
   show('play');
   $('#btnHint').hidden = true;
   if (WORLDS[world].ops && !R.op) { modes.hidden = true; pickOp(); return; }
+  if (world === 'countries') { kcPick(); return; }
   enterWorld(true);
 }
 /* every game teaches first: the lesson opens by itself the first time (and again after a hard round), then the quiz */
-const learnKey = () => WORLDS[R.world].explore ? R.world : `${R.world}:${S.age === 'big' ? 'b' : 'l'}:${R.op || ''}:${stepsOf(R.world) ? R.step : 0}`;
+const learnKey = () => WORLDS[R.world].explore ? R.world + (stepsOf(R.world) ? `:${S.age === 'big' ? 'b' : 'l'}:${R.step}` : '') : `${R.world}:${S.age === 'big' ? 'b' : 'l'}:${R.op || ''}:${stepsOf(R.world) ? R.step : 0}`;
 function enterWorld(first) {
   $('#modes').hidden = false;
   const k = learnKey();
@@ -3592,7 +3768,7 @@ function lessonTitle() {
   if (w === 'letters') return st && !st.all ? `Let's learn the letters ${st.name}!` : "Let's meet all the letters, A to Z!";
   if (w === 'numbers') return big ? "Let's meet the big numbers!" : st && !st.all ? `Let's learn the numbers ${st.name}!` : "Let's meet the numbers 1 to 10!";
   if (w === 'math') return ({ add: "Let's learn adding!", sub: "Let's learn taking away!", mul: big ? "Let's learn times!" : "Let's learn groups!", div: big ? "Let's learn dividing!" : "Let's learn sharing!", mix: "Let's learn four kinds of math!" })[R.op || 'mix'];
-  return WORLDS[w].exploreText;
+  return w === 'countries' ? kcLessonTitle(st) : WORLDS[w].exploreText;
 }
 function learnItems(world) {
   const little = S.age !== 'big';
@@ -3603,8 +3779,7 @@ function learnItems(world) {
   if (world === 'oceans') return Object.entries(OCEAN).map(([id, o]) => ({ k: 'o', id, name: o.name, key: o.name, at: o.at[0], text: o.fact, em: o.em, stk: id, the: true }));
   if (world === 'rivers') return RIVERS.map(r => { const m = (r.pts.length >> 2) * 2; return { k: 'r', id: r.id, name: `${r.name} River`, key: r.name, at: [r.pts[m], r.pts[m + 1]], text: `It is in ${contName(r.c)}. ${r.fact}`, em: '🏞️', stk: r.c, the: true }; });
   const cs = COUNTRIES.filter(x => (little ? x.tier === 1 : x.tier <= 2) && (world === 'countries' || x.cap));
-  if (world === 'countries') return cs.map(c => ({ k: 'k', id: c.code, name: c.name, key: c.name, at: [c.lon, c.lat], flag: c, c: c.cont, stk: c.cont[0],
-    text: `${c.name} is in ${c.cont.map(contName).join(' and ')}.${c.cap ? ` Its capital city is ${c.cap}.` : ''}` }));
+  if (world === 'countries') return kcLearnItems(little);
   return cs.map(c => ({ k: 'p', id: c.code, name: c.cap, key: c.cap, at: [c.lon, c.lat], flag: c, c: c.cont, stk: c.cont[0], text: `${c.cap} is the capital city of ${theName(c)}.` }));
 }
 function setExplore(on) {
@@ -3635,7 +3810,7 @@ function showLearn(i, first) {
   const it = L.items[L.i], svg = R.svg;
   if (!svg) $('#lvis').innerHTML = it.vis; else learnMapShow(svg, it);
   $('#learn').innerHTML = `<button class="lr-nav" type="button" data-go="-1" aria-label="Go back one">◀</button>
-<div class="lr-card"><div class="lr-name">${it.flag ? flagSpan(it.flag) : it.em ? `<span class="lr-em" aria-hidden="true">${it.em}</span>` : ''}${esc(it.name)}</div>
+<div class="lr-card"><div class="lr-name">${it.flag ? flagSpan(it.flag) : it.em ? `<span class="lr-em" aria-hidden="true">${it.em}</span>` : ''}${esc(it.name)}${it.kf ? `<span class="lr-kf" aria-hidden="true">${it.kf}</span>` : ''}</div>
 <div class="lr-say">${it.sayHtml || `say it: <b>${esc(SAY[it.key] || it.name)}</b>`}</div><div class="lr-fact">${esc(it.text)}</div>
 <div class="lr-btns"><button class="chip" type="button" data-hear="1">🔊 Hear it</button><button class="chip" type="button" data-hear="slow">🐢 Slowly</button><span class="lr-n">${L.i + 1} of ${n}</span><button class="chip go" type="button" data-quiz="1">Quiz me!</button></div></div>
 <button class="lr-nav" type="button" data-go="1" aria-label="Next one">▶</button>`;
@@ -4349,9 +4524,10 @@ function finishRound() {
   const fresh = BUDDIES.filter(b => unlocked(b) && !S.seen[b.id]);
   fresh.forEach(b => { S.seen[b.id] = true; S.band[b.id] = true; });
   save(); AU.fanfare(); AU.apply();
-  const title = got === total ? 'Perfect! Superstar!' : got >= 6 ? 'Amazing!' : got >= 3 ? 'Great job!' : 'Good practice!';
+  const title = got === total ? 'Perfect! Superstar!' : got >= total * 0.75 ? 'Amazing!' : got >= total * 0.375 ? 'Great job!' : 'Good practice!';
   const steps = stepsOf(w); let stepCard = '', stepSay = '';
-  if (steps && steps[R.step]) {
+  if (w === 'countries' && steps && steps[R.step]) { const kr = kcFinish(got, total); stepCard = kr.card; stepSay = kr.say; }
+  else if (steps && steps[R.step]) {
     if (got >= 5 && R.step < steps.length - 1 && stepIx(w) === R.step) {
       const nx = steps[R.step + 1]; S.step = { ...(S.step || {}), [w]: R.step + 1 }; save();
       stepCard = `<div class="unlock"><span class="un-em" aria-hidden="true">🎓</span><div><b>Step ${R.step + 1} done: ${esc(steps[R.step].name)}!</b><span>Next up: ${esc(nx.name)}. A new lesson comes first.</span></div></div>`;
@@ -5597,6 +5773,7 @@ ${rv ? '<div class="par-btns"><button class="chip" type="button" id="rvTest">Tes
 <label class="tgl"><input type="checkbox" id="setRun"${S.runOn !== false ? ' checked' : ''}> Jump Jam map: a new level opens for every ${RUN_NEED} stars (open levels can be played again any time)</label>
 <div class="par-btns"><button class="chip" type="button" id="giveRun">Open 1 more level</button><span class="par-mini" id="runCount">Levels open: ${S.runOpen || 0} of ${FORMATS.length}</span></div>
 ${jmParRow()}
+<label class="tgl"><input type="checkbox" id="setKcAll"${S.kcAll ? ' checked' : ''}> Countries: every continent is open (when off, ${kcNeed(KC_LEN)} of ${KC_LEN} stars in one continent open the next)</label>
 <label class="tgl"><input type="checkbox" id="setJokes"${S.jokes ? ' checked' : ''}> Joke picker at the end of a round</label>
 <label class="tgl"><input type="checkbox" id="setAll"${S.allBuddies ? ' checked' : ''}> All 20 buddies are in the band now (no waiting for stars)</label></div>`;
 }
@@ -6221,7 +6398,7 @@ function jmGame(id) {
   return w ? { id, name: w.name, badge: w.badge, host: h, tc: w.tc || h.color } : null;
 }
 /* a game he played before this counter existed still counts as played once (S.best has its best round) */
-const jmStatOf = id => S.jmStat[id] || (S.best[id] != null ? { r: 1, s: S.best[id], q: ROUND_LEN, t: 0 } : { r: 0, s: 0, q: 0, t: 0 });
+const jmStatOf = id => S.jmStat[id] || (S.best[id] != null ? { r: 1, s: S.best[id], q: roundLen(id), t: 0 } : { r: 0, s: 0, q: 0, t: 0 });
 /* which game to suggest: one he has not played yet, has played least, or gets the fewest stars in. Never the same twice in a row, and Math at least every third time. */
 function jmSuggest(rnd = Math.random) {
   const hist = S.jmSugHist || [], last = hist[hist.length - 1];
@@ -8429,7 +8606,7 @@ function boot() {
   });
   $('#btnRepeat').addEventListener('click', () => {
     if (!R) return; AU.tap();
-    if (R.picking) hostSay('What kind of math? Tap one!');
+    if (R.picking) hostSay(R.picking === 'kc' ? 'Pick a continent! Tap one!' : 'What kind of math? Tap one!');
     else if (R.explore) showLearn(R.learn ? R.learn.i : 0);
     else if (R.busy && R.go) {
       const fb = R.fb || [$('#qFb').textContent];
@@ -8441,7 +8618,8 @@ function boot() {
   /* tap each thing to count it: it gets its number and the buddy says it */
   $('#stage').addEventListener('click', e => {
     const ob = e.target.closest('.op-btn');
-    if (ob) { if (!R || !R.picking) return; AU.tap(); R.op = ob.dataset.op; R.picking = false; enterWorld(false); return; }
+    if (ob) { if (!R || R.picking !== true) return; AU.tap(); R.op = ob.dataset.op; R.picking = false; enterWorld(false); return; }
+    const kb = e.target.closest('.kc-card'); if (kb) { kcChoose(Number(kb.dataset.kc)); return; }
     const sb = e.target.closest('#steps button'); if (sb) { AU.tap(); setStep(Number(sb.dataset.step)); return; }
     const wd = e.target.closest('#lvis [data-say]'); if (wd) { if (R && R.explore) { AU.tap(); lxWord(wd); } return; }
     const c = e.target.closest('.ci'); if (!c || !R || R.busy || R.explore || !R.q || !R.q.countUp) return;
@@ -8583,6 +8761,7 @@ function boot() {
     else if (t.id === 'vCount') { S.countVoice = t.checked; save(); }
     else if (t.id === 'setRun') { S.runOn = t.checked; save(); }
     else if (t.id === 'setJokes') { S.jokes = t.checked; save(); }
+    else if (t.id === 'setKcAll') { S.kcAll = t.checked; save(); }
     else if (t.id === 'setAll') { S.allBuddies = t.checked; if (t.checked) BUDDIES.forEach(b => { S.seen[b.id] = true; }); save(); AU.apply(); }
   });
   $('#parSet').addEventListener('click', e => {
